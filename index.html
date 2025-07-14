@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Numeric Symbol Converter</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background-color: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+      }
+      .input-section {
+        margin-bottom: 30px;
+      }
+      label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: bold;
+        color: #555;
+      }
+      input[type="text"] {
+        width: 100%;
+        padding: 12px;
+        font-size: 18px;
+        border: 2px solid #ddd;
+        border-radius: 5px;
+        box-sizing: border-box;
+      }
+      input[type="text"]:focus {
+        outline: none;
+        border-color: #4caf50;
+      }
+      .symbol-display {
+        margin-top: 20px;
+        padding: 20px;
+        background-color: #fafafa;
+        border-radius: 5px;
+        min-height: 100px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .error {
+        color: #f44336;
+        font-size: 14px;
+        margin-top: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Numeric Symbol Converter</h1>
+
+      <div class="input-section">
+        <label for="numberInput">Enter a number:</label>
+        <input
+          type="text"
+          id="numberInput"
+          placeholder="Enter any positive number..."
+        />
+        <div id="errorMsg" class="error" style="display: none"></div>
+      </div>
+
+      <div class="symbol-display">
+        <svg id="symbolSvg" width="400" height="140" viewBox="0 0 400 140">
+          <!-- Symbols will be drawn here -->
+        </svg>
+      </div>
+    </div>
+
+    <script>
+      const numberInput = document.getElementById("numberInput");
+      const errorMsg = document.getElementById("errorMsg");
+      const symbolSvg = document.getElementById("symbolSvg");
+
+      // Configuration
+      const STROKE_WIDTH = 2;
+      const QUADRANT_SIZE = 30;
+      const GROUP_SPACING = QUADRANT_SIZE; // Increased to quadrant size
+      const MARGIN = (QUADRANT_SIZE * 2) / 3; // 1/3 of reference line length
+      const GROUP_WIDTH = QUADRANT_SIZE * 2;
+      const GROUP_HEIGHT = QUADRANT_SIZE * 2 + MARGIN;
+
+      // Define nodes for each quadrant type
+      function getNodes(x, y, size, quadrantType) {
+        const nodes = {};
+
+        if (quadrantType === "ones") {
+          // Top-right - A,B,C,D clockwise from top-left
+          nodes.A = { x: x, y: y };
+          nodes.B = { x: x + size, y: y };
+          nodes.C = { x: x + size, y: y + size };
+          nodes.D = { x: x, y: y + size };
+        } else if (quadrantType === "tens") {
+          // Bottom-right - vertically mirrors ones
+          nodes.A = { x: x, y: y + size };
+          nodes.B = { x: x + size, y: y + size };
+          nodes.C = { x: x + size, y: y };
+          nodes.D = { x: x, y: y };
+        } else if (quadrantType === "hundreds") {
+          // Top-left - horizontally mirrors ones
+          nodes.A = { x: x + size, y: y };
+          nodes.B = { x: x, y: y };
+          nodes.C = { x: x, y: y + size };
+          nodes.D = { x: x + size, y: y + size };
+        } else if (quadrantType === "thousands") {
+          // Bottom-left - vertically mirrors hundreds
+          nodes.A = { x: x + size, y: y + size };
+          nodes.B = { x: x, y: y + size };
+          nodes.C = { x: x, y: y };
+          nodes.D = { x: x + size, y: y };
+        }
+
+        return nodes;
+      }
+
+      // Tag drawing functions for each digit (1-9) using node connections
+      const tagDrawers = {
+        1: (nodes) =>
+          `<line x1="${nodes.A.x}" y1="${nodes.A.y}" x2="${nodes.B.x}" y2="${nodes.B.y}" stroke="black" stroke-width="${STROKE_WIDTH}"/>`,
+
+        2: (nodes) =>
+          `<line x1="${nodes.C.x}" y1="${nodes.C.y}" x2="${nodes.D.x}" y2="${nodes.D.y}" stroke="black" stroke-width="${STROKE_WIDTH}"/>`,
+
+        3: (nodes) =>
+          `<line x1="${nodes.A.x}" y1="${nodes.A.y}" x2="${nodes.C.x}" y2="${nodes.C.y}" stroke="black" stroke-width="${STROKE_WIDTH}"/>`,
+
+        4: (nodes) =>
+          `<line x1="${nodes.B.x}" y1="${nodes.B.y}" x2="${nodes.D.x}" y2="${nodes.D.y}" stroke="black" stroke-width="${STROKE_WIDTH}"/>`,
+
+        5: (
+          nodes
+        ) => `<line x1="${nodes.A.x}" y1="${nodes.A.y}" x2="${nodes.B.x}" y2="${nodes.B.y}" stroke="black" stroke-width="${STROKE_WIDTH}"/>
+                          <line x1="${nodes.B.x}" y1="${nodes.B.y}" x2="${nodes.D.x}" y2="${nodes.D.y}" stroke="black" stroke-width="${STROKE_WIDTH}"/>`,
+
+        6: (nodes) =>
+          `<line x1="${nodes.B.x}" y1="${nodes.B.y}" x2="${nodes.C.x}" y2="${nodes.C.y}" stroke="black" stroke-width="${STROKE_WIDTH}"/>`,
+
+        7: (
+          nodes
+        ) => `<line x1="${nodes.A.x}" y1="${nodes.A.y}" x2="${nodes.B.x}" y2="${nodes.B.y}" stroke="black" stroke-width="${STROKE_WIDTH}"/>
+                          <line x1="${nodes.B.x}" y1="${nodes.B.y}" x2="${nodes.C.x}" y2="${nodes.C.y}" stroke="black" stroke-width="${STROKE_WIDTH}"/>`,
+
+        8: (
+          nodes
+        ) => `<line x1="${nodes.B.x}" y1="${nodes.B.y}" x2="${nodes.C.x}" y2="${nodes.C.y}" stroke="black" stroke-width="${STROKE_WIDTH}"/>
+                          <line x1="${nodes.C.x}" y1="${nodes.C.y}" x2="${nodes.D.x}" y2="${nodes.D.y}" stroke="black" stroke-width="${STROKE_WIDTH}"/>`,
+
+        9: (
+          nodes
+        ) => `<line x1="${nodes.A.x}" y1="${nodes.A.y}" x2="${nodes.B.x}" y2="${nodes.B.y}" stroke="black" stroke-width="${STROKE_WIDTH}"/>
+                          <line x1="${nodes.B.x}" y1="${nodes.B.y}" x2="${nodes.C.x}" y2="${nodes.C.y}" stroke="black" stroke-width="${STROKE_WIDTH}"/>
+                          <line x1="${nodes.C.x}" y1="${nodes.C.y}" x2="${nodes.D.x}" y2="${nodes.D.y}" stroke="black" stroke-width="${STROKE_WIDTH}"/>
+                          <line x1="${nodes.D.x}" y1="${nodes.D.y}" x2="${nodes.A.x}" y2="${nodes.A.y}" stroke="black" stroke-width="${STROKE_WIDTH}"/>`,
+      };
+
+      function drawSymbolGroup(digits, startX, startY) {
+        let svg = "";
+
+        // Draw central vertical bar with proper spacing
+        const centerX = startX + QUADRANT_SIZE;
+        svg += `<line x1="${centerX}" y1="${startY}" x2="${centerX}" y2="${
+          startY + GROUP_HEIGHT
+        }" stroke="black" stroke-width="${STROKE_WIDTH}"/>`;
+
+        // Draw tags in quadrants with CORRECTED quadrant layout
+        const quadrantConfigs = [
+          { digit: digits[2], type: "hundreds", x: startX, y: startY }, // Hundreds (top-left)
+          {
+            digit: digits[3],
+            type: "ones",
+            x: startX + QUADRANT_SIZE,
+            y: startY,
+          }, // Ones (top-right)
+          {
+            digit: digits[0],
+            type: "thousands",
+            x: startX,
+            y: startY + QUADRANT_SIZE + MARGIN,
+          }, // Thousands (bottom-left)
+          {
+            digit: digits[1],
+            type: "tens",
+            x: startX + QUADRANT_SIZE,
+            y: startY + QUADRANT_SIZE + MARGIN,
+          }, // Tens (bottom-right)
+        ];
+
+        quadrantConfigs.forEach((config) => {
+          if (config.digit > 0) {
+            const nodes = getNodes(
+              config.x,
+              config.y,
+              QUADRANT_SIZE,
+              config.type
+            );
+            svg += tagDrawers[config.digit](nodes);
+          }
+        });
+
+        return svg;
+      }
+
+      function convertNumberToSymbol(numberStr) {
+        if (!numberStr || numberStr === "0") {
+          return `<line x1="30" y1="10" x2="30" y2="70" stroke="black" stroke-width="${STROKE_WIDTH}"/>`;
+        }
+
+        // Split number into groups of 4 from left to right
+        const groups = [];
+        for (let i = 0; i < numberStr.length; i += 4) {
+          let group = numberStr.slice(i, i + 4);
+          // Pad all groups except the first one with leading zeros to make them 4 digits
+          if (i > 0) {
+            group = group.padStart(4, "0");
+          }
+          groups.push(group);
+        }
+
+        let svg = "";
+        let currentX = 10;
+        const startY = 10;
+
+        // Process each group
+        groups.forEach((group) => {
+          // Pad group to 4 digits for processing
+          const paddedGroup = group.padStart(4, "0");
+          const digits = paddedGroup.split("").map((d) => parseInt(d));
+
+          svg += drawSymbolGroup(digits, currentX, startY);
+          currentX += GROUP_WIDTH + GROUP_SPACING;
+        });
+
+        return svg;
+      }
+
+      function updateSymbol() {
+        const input = numberInput.value.trim();
+
+        // Clear previous error
+        errorMsg.style.display = "none";
+
+        if (input === "") {
+          symbolSvg.innerHTML = "";
+          return;
+        }
+
+        // Validate input (only positive integers)
+        if (!/^\d+$/.test(input)) {
+          errorMsg.textContent = "Please enter only positive whole numbers.";
+          errorMsg.style.display = "block";
+          symbolSvg.innerHTML = "";
+          return;
+        }
+
+        // Remove leading zeros but keep at least one digit
+        const cleanedInput = input.replace(/^0+/, "") || "0";
+
+        // Update SVG
+        const svgContent = convertNumberToSymbol(cleanedInput);
+
+        // Calculate required width
+        const numGroups = Math.ceil(cleanedInput.length / 4);
+        const requiredWidth =
+          20 + numGroups * GROUP_WIDTH + (numGroups - 1) * GROUP_SPACING;
+
+        symbolSvg.setAttribute("width", Math.max(400, requiredWidth));
+        symbolSvg.setAttribute(
+          "viewBox",
+          `0 0 ${Math.max(400, requiredWidth)} 140`
+        );
+        symbolSvg.innerHTML = svgContent;
+      }
+
+      // Input validation - only allow numbers
+      numberInput.addEventListener("input", function (e) {
+        // Remove any non-digit characters
+        e.target.value = e.target.value.replace(/[^0-9]/g, "");
+        updateSymbol();
+      });
+
+      // Initial load
+      updateSymbol();
+    </script>
+  </body>
+</html>
